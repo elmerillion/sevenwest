@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -55,7 +56,7 @@ namespace SevenWestMediaTechInterview.UnitTests
         {
             var httpClientFactory = new Mock<IHttpClientFactory>();
             var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
-            var mockUserServiceResponse = JsonSerializer.Serialize("[]");
+            var mockUserServiceResponse = JsonSerializer.Serialize("[ 123456 ]");
 
             mockHttpMessageHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
@@ -105,6 +106,42 @@ namespace SevenWestMediaTechInterview.UnitTests
             var users = await userHttpClient.GetUsers();
 
             Assert.IsEmpty(users);
+        }
+
+        [Test]
+        public async Task GetUsers_InvalidSpecificationJson_Successful()
+        {
+            // the JSON specification requires property names to be encased in quotes, validate we can parse without them
+            string invalidJson = @"
+            [
+              { id: 1, first: ""Bill"", last: ""Bryson"", age:23, gender:""M"" }
+            ]";
+
+            var httpClientFactory = new Mock<IHttpClientFactory>();
+            var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+
+            mockHttpMessageHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync((HttpRequestMessage request, CancellationToken token) =>
+                {
+                    HttpResponseMessage response = new HttpResponseMessage();
+                    response.StatusCode = System.Net.HttpStatusCode.OK;
+                    response.Content = new StringContent(invalidJson);
+                    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                    return response;
+                });
+            var client = new HttpClient(mockHttpMessageHandler.Object);
+            httpClientFactory.Setup(factory => factory.CreateClient(It.IsAny<string>())).Returns(client);
+            var logger = new Mock<ILogger<UserHttpClient>>();
+            var configuration = new Mock<IConfiguration>();
+            configuration.Setup(c => c.GetSection(It.IsAny<string>())[It.IsAny<string>()]).Returns("http://null");
+
+            var userHttpClient = new UserHttpClient(client, logger.Object, configuration.Object);
+
+            var users = await userHttpClient.GetUsers();
+
+            Assert.IsNotEmpty(users);
+            Assert.IsTrue(users.First().Id == 1);
         }
     }
 }

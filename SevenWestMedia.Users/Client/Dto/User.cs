@@ -1,18 +1,22 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
 
 namespace SevenWestMediaTechInterview.Client.Dto
 {
     public class User
     {
-        [JsonPropertyName("id")]
+        [JsonProperty("id")]
         public int Id { get; set; }
-        [JsonPropertyName("age")]
+
+        [JsonProperty("age")]
         public int Age { get; set; }
-        [JsonPropertyName("first")]
+
+        [JsonProperty("first")]
         public string GivenName { get; set; }
-        [JsonPropertyName("last")]
+
+        [JsonProperty("last")]
         public string Surname { get; set; }
-        [JsonPropertyName("gender")]
+
+        [JsonProperty("gender")]
         public string Gender { get; set; }
 
     }

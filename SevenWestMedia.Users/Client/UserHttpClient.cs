@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Json;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Polly.CircuitBreaker;
 using SevenWestMediaTechInterview.Client.Dto;
+using JsonException = System.Text.Json.JsonException;
 
 namespace SevenWestMediaTechInterview.Client
 {
@@ -18,13 +20,13 @@ namespace SevenWestMediaTechInterview.Client
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<UserHttpClient> _logger;
-        private readonly IConfiguration _configuration;
 
         public UserHttpClient(HttpClient httpClient, ILogger<UserHttpClient> logger, IConfiguration configuration)
         {
             _httpClient = httpClient;
+            _httpClient.BaseAddress = new Uri(configuration.GetConnectionString("UserClientUrl"));
             _logger = logger;
-            _configuration = configuration;
+            
         }
 
         /// <summary>
@@ -38,7 +40,10 @@ namespace SevenWestMediaTechInterview.Client
 
             try
             {
-                users = await _httpClient.GetFromJsonAsync<IEnumerable<User>>(new Uri($"{_configuration.GetConnectionString("UserClientUrl")}/sampletest"));
+                var response = await _httpClient.GetAsync("sampletest");
+                response.EnsureSuccessStatusCode();
+                var content = await response.Content.ReadAsStringAsync();
+                users = JsonConvert.DeserializeObject<List<User>>(content);
             }
             catch (BrokenCircuitException bce)
             {
@@ -47,6 +52,14 @@ namespace SevenWestMediaTechInterview.Client
             catch (JsonException je)
             {
                 _logger.LogError(je, "Error parsing JSON response from endpoint.");
+            }
+            catch (JsonReaderException jre)
+            {
+                _logger.LogError(jre, "Error parsing JSON response from endpoint.");
+            }
+            catch (JsonSerializationException jse)
+            {
+                _logger.LogError(jse, "Error parsing JSON response from endpoint.");
             }
             catch (HttpRequestException hre)
             {

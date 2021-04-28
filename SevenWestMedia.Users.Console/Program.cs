@@ -35,7 +35,7 @@ namespace SevenWestMediaTechInterview.Console
             using IHost host = CreateHostBuilder(args).Build();
             _userService = host.Services.GetService<IUserService>();
 
-            int targetId = 53;
+            int targetId = 42;
             await FindAndPrintUser(targetId);
 
             int targetAge = 23;
